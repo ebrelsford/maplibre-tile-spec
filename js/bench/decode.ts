@@ -20,16 +20,16 @@ const tiles = [
 
 console.log('Regenerating MLT files');
 tiles.forEach(tile => {
-  const cmd = `java -jar ../java/build/libs/encode.jar -mvt ../test/fixtures/${tile}.mvt -metadata -decode -mlt ../test/expected/${tile}.mlt`;
+  const cmd = `java -jar java/build/libs/encode.jar -mvt test/fixtures/${tile}.mvt -metadata -decode -mlt test/expected/${tile}.mlt`;
   console.log(cmd)
   execSync(cmd);
 });
 
 const runSuite = async (tile) => {
   console.log(`Running benchmarks for ${tile}`);
-  const metadata: Buffer = readFileSync(`../test/expected/${tile}.mlt.meta.pbf`);
-  const mvtTile: Buffer = readFileSync(`../test/fixtures/${tile}.mvt`);
-  const mltTile: Buffer = readFileSync(`../test/expected/${tile}.mlt`);
+  const metadata: Buffer = readFileSync(`test/expected/${tile}.mlt.meta.pbf`);
+  const mvtTile: Buffer = readFileSync(`test/fixtures/${tile}.mvt`);
+  const mltTile: Buffer = readFileSync(`test/expected/${tile}.mlt`);
   const uri = tile.split('/')[1].split('-').map(Number);
   const { z, x, y } = { z: uri[0], x: uri[1], y: uri[2] };
   const tilesetMetadata = TileSetMetadata.fromBinary(metadata);
