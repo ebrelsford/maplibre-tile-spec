@@ -1,10 +1,10 @@
 {
   "name": "maplibre-tile-spec",
   "version": "0.0.1",
-  "main": "js/dist/index.js",
-  "types": "js/dist/index.d.ts",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "files": [
-    "js/dist"
+    "dist"
   ],
   "scripts": {
     "build": "tsc",
