@@ -1,17 +1,17 @@
 {
   "name": "maplibre-tile-spec",
   "version": "0.0.1",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "js/dist/index.js",
+  "types": "js/dist/index.d.ts",
   "files": [
-    "/dist"
+    "js/dist"
   ],
   "scripts": {
     "build": "tsc",
     "prepare": "npm run build",
-    "bench": "ts-node bench/decode.ts",
+    "bench": "ts-node js/bench/decode.ts",
     "test": "jest",
-    "lint": "eslint --max-warnings=0 --fix --ext .ts src",
+    "lint": "eslint --max-warnings=0 --fix --ext .ts js/src",
     "format": "prettier --write \"**/*.ts\""
   },
   "devDependencies": {
