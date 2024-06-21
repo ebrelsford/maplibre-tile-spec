@@ -6,7 +6,7 @@ import { IntegerDecoder } from './IntegerDecoder';
 import { IntWrapper } from './IntWrapper';
 import { StreamMetadataDecoder } from '../metadata/stream/StreamMetadataDecoder';
 import { PhysicalLevelTechnique } from '../metadata/stream/PhysicalLevelTechnique';
-import { GeometryFactory, LineString, Polygon, LinearRing } from '../data/Geometry';
+import { GeometryFactory, Coordinate, LineString, Polygon, LinearRing } from '../data/Geometry';
 import Point = require("@mapbox/point-geometry");
 
 export enum GeometryType {
@@ -20,36 +20,6 @@ export enum GeometryType {
 
 const geometryFactory = new GeometryFactory();
 
-
-export class GeometryColumn {
-    numGeometries: number[];
-    numParts: number[];
-    numRings: number[];
-    vertexOffsets: number[];
-    vertexList: number[];
-    constructor(numGeometries: number[], numParts: number[], numRings: number[], vertexOffsets: number[], vertexList: number[]) {
-        this.numGeometries = numGeometries;
-        this.numParts = numParts;
-        this.numRings = numRings;
-        this.vertexOffsets = vertexOffsets;
-        this.vertexList = vertexList;
-    }
-}
-
-class GeometryCounters {
-    partCounter: IntWrapper;
-    ringCounter: IntWrapper;
-    geometryCounter: IntWrapper;
-    vertexBufferCounter: IntWrapper;
-    vertexOffsetsCounter: IntWrapper;
-    constructor() {
-        this.partCounter = new IntWrapper(0);
-        this.ringCounter = new IntWrapper(0);
-        this.geometryCounter = new IntWrapper(0);
-        this.vertexBufferCounter = new IntWrapper(0);
-        this.vertexOffsetsCounter = new IntWrapper(0);
-    }
-}
 
 export class GeometryDecoder {
     public static decodeGeometryColumn(tile: Uint8Array, numStreams: number, offset: IntWrapper): GeometryColumn {
@@ -104,10 +74,17 @@ export class GeometryDecoder {
         return new GeometryColumn( numGeometries, numParts, numRings, vertexOffsets, vertexList );
     }
 
-    static decodeGeometry1(geometryType : GeometryType,
-                containsPolygon : boolean,
-                geometryCounter : GeometryCounters,
-                geometryColumn: GeometryColumn) {
+    static decodeGeometry(geometryColumn: GeometryColumn) {
+        const geometries = new Array(geometryColumn.geometryTypes.length);
+        let partOffsetCounter = 0;
+        let ringOffsetsCounter = 0;
+        let geometryOffsetsCounter = 0;
+        let geometryCounter = 0;
+        const geometryFactory = new GeometryFactory();
+        let vertexBufferOffset = 0;
+        let vertexOffsetsOffset = 0;
+
+        const geometryTypes = geometryColumn.geometryTypes;
         const geometryOffsets = geometryColumn.numGeometries;
         const partOffsets = geometryColumn.numParts;
         const ringOffsets = geometryColumn.numRings;

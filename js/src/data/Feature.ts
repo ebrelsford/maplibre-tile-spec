@@ -1,13 +1,15 @@
-import { project } from './Projection';
+import { Projection } from './Projection';
 
 export class Feature {
     id: number;
+    extent: number;
     geometry;
     properties;
-    constructor(id: number, geometry, properties) {
+    constructor(id: number, extent: number, geometry, properties) {
         this.id = id;
         this.geometry = geometry;
         this.properties = properties;
+        this.extent = extent;
     }
 
     public loadGeometry = () => {
@@ -21,9 +23,10 @@ export class Feature {
     public toGeoJSON = (x: number, y: number, z: number) => {
         let geometry;
         if (typeof this.geometry.toGeoJSON === 'function') {
-            geometry = this.geometry.toGeoJSON(x, y, z);
+            geometry = this.geometry.toGeoJSON(this.extent, x, y, z);
         } else {
-            const projected = project(x, y, z, [this.geometry]);
+            const projection = new Projection(this.extent, x, y, z);
+            const projected = projection.project([this.geometry]);
             geometry = {
                 "type": "Point",
                 "coordinates": projected[0]

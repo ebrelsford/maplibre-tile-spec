@@ -1,6 +1,9 @@
 import { IntWrapper } from './IntWrapper';
 import { StreamMetadataDecoder } from '../metadata/stream/StreamMetadataDecoder';
 import { IntegerDecoder } from './IntegerDecoder';
+import { BitSet } from 'bitset';
+
+const textDecoder = new TextDecoder("utf-8");
 
 const textDecoder = new TextDecoder("utf-8");
 
@@ -15,7 +18,7 @@ export class StringDecoder {
 
     public static decode(
         data: Uint8Array, offset: IntWrapper, numStreams: number,
-        presentStream: Uint8Array, numValues: number) {
+        presentStream: BitSet, numValues: number) {
         let dictionaryLengthStream: number[] = null;
         let offsetStream: number[] = null;
         const dataStream: Uint8Array = null;
@@ -65,12 +68,12 @@ export class StringDecoder {
         }
     }
 
-    private static decodePlain(presentStream: Uint8Array, lengthStream: number[], utf8Values: Uint8Array, numValues: number): string[] {
+    private static decodePlain(presentStream: BitSet, lengthStream: number[], utf8Values: Uint8Array, numValues: number): string[] {
         const decodedValues: string[] = [];
         let lengthOffset = 0;
         let strOffset = 0;
         for (let i = 0; i < numValues; i++) {
-            const present = presentStream[i];
+            const present = presentStream.get(i);
             if (present) {
                 const length = lengthStream[lengthOffset++];
                 const value = textDecoder.decode(utf8Values.slice(strOffset, strOffset + length));
@@ -84,7 +87,7 @@ export class StringDecoder {
     }
 
     private static decodeDictionary(
-        presentStream: Uint8Array, lengthStream: number[], utf8Values: Uint8Array,
+        presentStream: BitSet, lengthStream: number[], utf8Values: Uint8Array,
         dictionaryOffsets: number[], numValues: number
     ): string[] {
         const dictionary: string[] = [];
@@ -99,7 +102,7 @@ export class StringDecoder {
         let offset = 0;
 
         for (let i = 0; i < numValues; i++) {
-            const present = presentStream[i];
+            const present = presentStream.get(i);
             if (present) {
                 const value = dictionary[dictionaryOffsets[offset++]];
                 values.push(value);

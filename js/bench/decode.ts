@@ -18,26 +18,36 @@ const tiles = [
   'bing/5-17-11',
 ];
 
-console.log('Regenerating MLT files');
+if (!existsSync('../java/build/libs/encode.jar')) {
+  console.log('encode.jar does not exist, building java project...');
+  execSync('./gradlew cli', { cwd: '../java' });
+}
 tiles.forEach(tile => {
-  const cmd = `java -jar java/build/libs/encode.jar -mvt test/fixtures/${tile}.mvt -metadata -decode -mlt test/expected/${tile}.mlt`;
-  console.log(cmd)
-  execSync(cmd);
+  if (!existsSync(`../test/expected/${tile}.mlt.meta.pbf`)) {
+    console.log('Generating MLT tiles & metadata');
+    const cmd = `java -jar ../java/build/libs/encode.jar -mvt ../test/fixtures/${tile}.mvt -metadata -decode -mlt ../test/expected/${tile}.mlt`;
+    console.log(cmd)
+    execSync(cmd);
+  }
 });
+
+let maxTime = 10;
+if (process.env.GITHUB_RUN_ID) {
+  maxTime = 2;
+  console.log(`Running in CI, using smaller maxTime: ${maxTime} seconds`);
+}
 
 const runSuite = async (tile) => {
   console.log(`Running benchmarks for ${tile}`);
-  const metadata: Buffer = readFileSync(`test/expected/${tile}.mlt.meta.pbf`);
-  const mvtTile: Buffer = readFileSync(`test/fixtures/${tile}.mvt`);
-  const mltTile: Buffer = readFileSync(`test/expected/${tile}.mlt`);
+  const metadata: Buffer = readFileSync(`../test/expected/${tile}.mlt.meta.pbf`);
+  const mvtTile: Buffer = readFileSync(`../test/fixtures/${tile}.mvt`);
+  const mltTile: Buffer = readFileSync(`../test/expected/${tile}.mlt`);
   const uri = tile.split('/')[1].split('-').map(Number);
   const { z, x, y } = { z: uri[0], x: uri[1], y: uri[2] };
   const tilesetMetadata = TileSetMetadata.fromBinary(metadata);
-  const featureTables = MltDecoder.generateFeatureTables(tilesetMetadata);
 
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
       const suite = new benchmark.Suite;
-
       suite
           .on('cycle', function(event: Event) {
               console.log(String(event.target));
@@ -48,20 +58,21 @@ const runSuite = async (tile) => {
           })
           .add(`MLT ${tile}`, {
               defer: true,
+              maxTime: maxTime,
               fn: (deferred: benchmark.Deferred) => {
-                const decoded = MltDecoder.decodeMlTile(mltTile, featureTables);
+                const decoded = MltDecoder.decodeMlTile(mltTile, tilesetMetadata);
                 const features = [];
-                decoded.layers.forEach(layer => {
-                  for (let i = 0; i < layer.features.length; i++) {
-                    const feature = layer.features[i];
-                    features.push(feature.toGeoJSON(x, y, z));
+                for (const layer of decoded.layers) {
+                  for (const feature of layer.features) {
+                    features.push(feature.toGeoJSON(z, y, z));
                   }
-                })
+                }
                 deferred.resolve();
               }
           })
           .add(`MVT ${tile}`, {
             defer: true,
+            maxTime: maxTime,
             fn: (deferred: benchmark.Deferred) => {
                 const vectorTile = new VectorTile(new Protobuf(mvtTile));
                 const features = [];
@@ -72,7 +83,7 @@ const runSuite = async (tile) => {
                     const feature = layer.feature(i);
                     features.push(feature.toGeoJSON(x, y, z));
                   }
-                };
+                }
                 deferred.resolve();
             }
         })

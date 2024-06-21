@@ -26,43 +26,76 @@ export function parseMvtTile(mvtTile: Buffer): any {
     }
 }
 
+function getLayerByName(layers, name) {
+    return layers.find(layer => layer.name === name);
+}
+
+function printValue(key, value) {
+  return typeof value === 'bigint'
+  ? value.toString()
+  : value;
+}
+
+export function parseMvtTile(mvtTile: Buffer): any {
+    const vectorTile = new VectorTile(new Protobuf(mvtTile));
+    const layers = [];
+    for (const layerName of Object.keys(vectorTile.layers)) {
+        const layer = vectorTile.layers[layerName];
+        const features = [];
+        for (let i = 0; i < layer.length; i++) {
+            features.push(layer.feature(i));
+        }
+        layers.push({ name: layerName, features, version: layer.version, extent: layer.extent });
+    }
+    return {
+        layers: layers
+    }
+}
+
 describe("MltDecoder", () => {
     it("should decode one tile with one point", async () => {
         const tiles = getTiles("simple/point-boolean")[0];
-        const featureTables = MltDecoder.generateFeatureTables(TileSetMetadata.fromBinary(tiles.meta));
-        const decoded = MltDecoder.decodeMlTile(tiles.mlt, featureTables);
-        const feature = decoded.layers[0].features[0];
-        const mvtFeature = tiles.mvt.layers[0].features[0];
+        const decoded = MltDecoder.decodeMlTile(tiles.mlt, TileSetMetadata.fromBinary(tiles.meta));
+        const mltLayer = decoded.layers[0];
+        const mvtLayer = tiles.mvt.layers[0];
+        expect(mltLayer.name).toEqual(mvtLayer.name);
+        expect(mltLayer.features.length).toEqual(mvtLayer.features.length);
+        expect(mltLayer.version).toEqual(mvtLayer.version);
+        const feature = mltLayer.features[0];
+        const mvtFeature = mvtLayer.features[0];
+        expect(feature.extent).toEqual(mvtFeature.extent);
+        expect(Object.entries(feature.properties)).toEqual(Object.entries(mvtFeature.properties));
         expect(feature.loadGeometry()).toEqual(mvtFeature.loadGeometry());
         expect(feature.toGeoJSON(0,0,0)).toEqual(mvtFeature.toGeoJSON(0,0,0));
+        expect(feature.toGeoJSON(1,2,3)).toEqual(mvtFeature.toGeoJSON(1,2,3));
     });
 
     it("should decode one tile with one line", async () => {
         const tiles = getTiles("simple/line-boolean")[0];
-        const featureTables = MltDecoder.generateFeatureTables(TileSetMetadata.fromBinary(tiles.meta));
-        const decoded = MltDecoder.decodeMlTile(tiles.mlt, featureTables);
+        const decoded = MltDecoder.decodeMlTile(tiles.mlt, TileSetMetadata.fromBinary(tiles.meta));
         const feature = decoded.layers[0].features[0];
         const mvtFeature = tiles.mvt.layers[0].features[0];
+        expect(Object.entries(feature.properties)).toEqual(Object.entries(mvtFeature.properties));
         expect(feature.loadGeometry()).toEqual(mvtFeature.loadGeometry());
         expect(feature.toGeoJSON(0,0,0)).toEqual(mvtFeature.toGeoJSON(0,0,0));
     });
 
     it("should decode one tile with one polygon", async () => {
         const tiles = getTiles("simple/polygon-boolean")[0];
-        const featureTables = MltDecoder.generateFeatureTables(TileSetMetadata.fromBinary(tiles.meta));
-        const decoded = MltDecoder.decodeMlTile(tiles.mlt, featureTables);
+        const decoded = MltDecoder.decodeMlTile(tiles.mlt, TileSetMetadata.fromBinary(tiles.meta));
         const feature = decoded.layers[0].features[0];
         const mvtFeature = tiles.mvt.layers[0].features[0];
+        expect(Object.entries(feature.properties)).toEqual(Object.entries(mvtFeature.properties));
         expect(feature.loadGeometry()).toEqual(mvtFeature.loadGeometry());
         expect(feature.toGeoJSON(0,0,0)).toEqual(mvtFeature.toGeoJSON(0,0,0));
     });
 
     it("should decode one tile with one multi-point", async () => {
         const tiles = getTiles("simple/multipoint-boolean")[0];
-        const featureTables = MltDecoder.generateFeatureTables(TileSetMetadata.fromBinary(tiles.meta));
-        const decoded = MltDecoder.decodeMlTile(tiles.mlt, featureTables);
+        const decoded = MltDecoder.decodeMlTile(tiles.mlt, TileSetMetadata.fromBinary(tiles.meta));
         const feature = decoded.layers[0].features[0];
         const mvtFeature = tiles.mvt.layers[0].features[0];
+        expect(Object.entries(feature.properties)).toEqual(Object.entries(mvtFeature.properties));
         expect(feature.loadGeometry()).toEqual(mvtFeature.loadGeometry());
         expect(feature.toGeoJSON(0,0,0)).toEqual(mvtFeature.toGeoJSON(0,0,0));
     });
@@ -70,28 +103,28 @@ describe("MltDecoder", () => {
     // TODO: this is not actually parsing as a multi-line
     it("should decode one tile with one multi-line", async () => {
         const tiles = getTiles("simple/multiline-boolean")[0];
-        const featureTables = MltDecoder.generateFeatureTables(TileSetMetadata.fromBinary(tiles.meta));
-        const decoded = MltDecoder.decodeMlTile(tiles.mlt, featureTables);
+        const decoded = MltDecoder.decodeMlTile(tiles.mlt, TileSetMetadata.fromBinary(tiles.meta));
         const feature = decoded.layers[0].features[0];
         const mvtFeature = tiles.mvt.layers[0].features[0];
+        expect(Object.entries(feature.properties)).toEqual(Object.entries(mvtFeature.properties));
         expect(feature.loadGeometry()).toEqual(mvtFeature.loadGeometry());
         expect(feature.toGeoJSON(0,0,0)).toEqual(mvtFeature.toGeoJSON(0,0,0));
     });
 
     it("should decode one tile with one multi-polygon", async () => {
         const tiles = getTiles("simple/multipolygon-boolean")[0];
-        const featureTables = MltDecoder.generateFeatureTables(TileSetMetadata.fromBinary(tiles.meta));
-        const decoded = MltDecoder.decodeMlTile(tiles.mlt, featureTables);
+        const decoded = MltDecoder.decodeMlTile(tiles.mlt, TileSetMetadata.fromBinary(tiles.meta));
         const feature = decoded.layers[0].features[0];
         const mvtFeature = tiles.mvt.layers[0].features[0];
+        expect(Object.entries(feature.properties)).toEqual(Object.entries(mvtFeature.properties));
         expect(feature.loadGeometry()).toEqual(mvtFeature.loadGeometry());
         expect(feature.toGeoJSON(0,0,0)).toEqual(mvtFeature.toGeoJSON(0,0,0));
+        expect(feature.toGeoJSON(1,2,3)).toEqual(mvtFeature.toGeoJSON(1,2,3));
     });
 
     it("should decode one Bing Map based tile", async () => {
         const tiles = getTiles("bing/4-13-6")[0];
-        const featureTables = MltDecoder.generateFeatureTables(TileSetMetadata.fromBinary(tiles.meta));
-        const decoded = MltDecoder.decodeMlTile(tiles.mlt, featureTables);
+        const decoded = MltDecoder.decodeMlTile(tiles.mlt, TileSetMetadata.fromBinary(tiles.meta));
         expect(decoded.layers.length).toEqual(9);
         // vtzero-stats reports:
         // layer,num_features,raw_size,raw_geometries_size,key_table_size,value_table_size
@@ -122,16 +155,15 @@ describe("MltDecoder", () => {
         expect(decoded.layers[7].features.length).toEqual(28);
         expect(decoded.layers[8].name).toEqual('admin_division1');
         expect(decoded.layers[8].features.length).toEqual(10);
-        for (let i = 0; i < decoded.layers.length; i++) {
-            const layer = decoded.layers[i];
+        let numGeomErrors = 0;
+        let numFeaturesErrors = 0;
+        for (const layer of decoded.layers) {
             const mvtLayer = getLayerByName(tiles.mvt.layers, layer.name);
             expect(layer.name).toEqual(mvtLayer.name);
             expect(layer.features.length).toEqual(mvtLayer.features.length);
             for (let i = 0; i < layer.features.length; i++) {
                 const feature = layer.features[i];
                 const mvtFeature = mvtLayer.features[i];
-                const featString = JSON.stringify(feature.loadGeometry());
-                const mvtFeatString = JSON.stringify(mvtFeature.loadGeometry());
                 if (layer.name === 'vector_background' && i === 0) {
                     // TODO: known bug:
                     // vector_background feature has a different geometry
@@ -139,21 +171,31 @@ describe("MltDecoder", () => {
                     // [[{"x":0,"y":0},{"x":0,"y":0},{"x":0,"y":0},{"x":0,"y":0},{"x":0,"y":0}]]
                     // Expected is:
                     // [[{"x":0,"y":0},{"x":4096,"y":0},{"x":4096,"y":4096},{"x":0,"y":4096},{"x":0,"y":0}]]
+                    numGeomErrors++;
                     continue;
                 } else {
-                    expect(feature.loadGeometry()).toEqual(feature.loadGeometry());
+                    expect(feature.loadGeometry()).toEqual(mvtFeature.loadGeometry());
                 }
-                // console.log('feature.properties', feature.toGeoJSON(0,0,0).properties);
-                // console.log('mvtFeature.properties', mvtFeature.toGeoJSON(0,0,0).properties);
-                // expect(feature].toGeoJSON(0,0,0).properties).toEqual(mvtFeature].toGeoJSON(0,0,0).properties);
+                const featProperties = JSON.stringify(Object.entries(feature.properties),printValue);
+                const mvtFeatProperties = JSON.stringify(Object.entries(mvtFeature.properties),printValue);
+                if (featProperties !== mvtFeatProperties) {
+                    // console.log(feature.id + ' for layer '  + layer.name + ' feature.properties', feature.properties);
+                    // console.log(mvtFeature.id + ' for layer '  + layer.name + ' mvtFeature.properties', mvtFeature.properties);
+                    numFeaturesErrors++;
+                } else {
+                    expect(Object.entries(feature.properties)).toEqual(Object.entries(mvtFeature.properties));
+                }
             }
         }
+        // Currently expect 1 difference in geometry in vector_background layer
+        expect(numGeomErrors).toEqual(1);
+        // Currently major differences in properties
+        expect(numFeaturesErrors).toEqual(86);
     });
 
     it("should decode one OMT based tile", async () => {
         const tiles = getTiles("omt/2_2_2")[0];
-        const featureTables = MltDecoder.generateFeatureTables(TileSetMetadata.fromBinary(tiles.meta));
-        const decoded = MltDecoder.decodeMlTile(tiles.mlt, featureTables);
+        const decoded = MltDecoder.decodeMlTile(tiles.mlt, TileSetMetadata.fromBinary(tiles.meta));
         expect(decoded).toBeDefined();
         expect(decoded.layers.length).toEqual(5);
         // Note: these feature counts match what vtzero-stats reports
@@ -174,38 +216,50 @@ describe("MltDecoder", () => {
         expect(decoded.layers[3].features.length).toEqual(754);
         expect(decoded.layers[4].name).toEqual('water');
         expect(decoded.layers[4].features.length).toEqual(172);
-        for (let i = 0; i < decoded.layers.length; i++) {
-            const layer = decoded.layers[i];
+        let numErrors = 0;
+        let numFeaturesErrors = 0;
+        for (const layer of decoded.layers) {
             const mvtLayer = getLayerByName(tiles.mvt.layers, layer.name);
             expect(layer.name).toEqual(mvtLayer.name);
             expect(layer.features.length).toEqual(mvtLayer.features.length);
             for (let i = 0; i < layer.features.length; i++) {
                 const feature = layer.features[i];
                 const mvtFeature = mvtLayer.features[i];
-                const featString = JSON.stringify(feature.loadGeometry());
-                const mvtFeatString = JSON.stringify(mvtFeature.loadGeometry());
                 expect(feature.loadGeometry()).toEqual(mvtFeature.loadGeometry());
                 if (layer.name === 'water') {
                     // TODO: Known multipolygon vs polygon bugs in water, so we skip for now
-                    // const featStringJSON = JSON.stringify(feature.toGeoJSON(0,0,0).geometry);
-                    // const mvtFeatStringJSON = JSON.stringify(mvtFeature.toGeoJSON(0,0,0).geometry);
-                    // if (featStringJSON !== mvtFeatStringJSON) {
-                    //     console.log('geometry is NOT equal ' + i + ' ' + layer.name, mvtFeature.extent);
-                    //     // fs.writeFileSync(i+'feature.geojson', featStringJSON);
-                    //     // fs.writeFileSync(i+'mvtFeature.geojson', mvtFeatStringJSON);
-                    //     // console.log('mvtFeature.geometry', mvtFeatStringJSON);
-                    //     continue;
-                    // }
-                    continue;
+                    const featStringJSON = JSON.stringify(feature.toGeoJSON(0,0,0).geometry);
+                    const mvtFeatStringJSON = JSON.stringify(mvtFeature.toGeoJSON(0,0,0).geometry);
+                    if (featStringJSON !== mvtFeatStringJSON) {
+                        numErrors++;
+                        // console.log('geometry is NOT equal ' + i + ' ' + layer.name);
+                        // fs.writeFileSync(i+'feature.geojson', featStringJSON);
+                        // fs.writeFileSync(i+'mvtFeature.geojson', mvtFeatStringJSON);
+                        // console.log('mvtFeature.geometry', mvtFeatStringJSON);
+                        // console.log('feature.geometry', featStringJSON);
+                        continue;
+                    } else {
+                        expect(layer.features[i].toGeoJSON(0,0,0).geometry).toEqual(mvtLayer.features[i].toGeoJSON(0,0,0).geometry);
+                    }
                 } else {
                     expect(layer.features[i].toGeoJSON(0,0,0).geometry).toEqual(mvtLayer.features[i].toGeoJSON(0,0,0).geometry);
                 }
-                // TODO: properties are incorrect
-                // console.log('feature.properties', feature.toGeoJSON(0,0,0).properties);
-                // console.log('mvtFeature.properties', mvtFeature.toGeoJSON(0,0,0).properties);
-                // expect(feature].toGeoJSON(0,0,0).properties).toEqual(mvtFeature].toGeoJSON(0,0,0).properties);
+
+                const featProperties = JSON.stringify(Object.entries(feature.properties),printValue);
+                const mvtFeatProperties = JSON.stringify(Object.entries(mvtFeature.properties),printValue);
+                if (featProperties !== mvtFeatProperties) {
+                    // console.log(feature.id + ' for layer '  + layer.name + ' feature.properties', feature.properties);
+                    // console.log(mvtFeature.id + ' for layer '  + layer.name + ' mvtFeature.properties', mvtFeature.properties);
+                    numFeaturesErrors++;
+                } else {
+                    expect(Object.entries(feature.properties)).toEqual(Object.entries(mvtFeature.properties));
+                }
             }
         }
+        // Currently expect 4 differences in geometry in water layer
+        expect(numErrors).toEqual(4);
+        // Currently major differences in properties
+        expect(numFeaturesErrors).toEqual(5228);
     });
 
 });

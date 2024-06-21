@@ -1,44 +1,16 @@
 import { Feature } from '../data/Feature';
 import { Layer } from '../data/Layer';
 import { MapLibreTile } from '../data/MapLibreTile';
-import { PhysicalLevelTechnique } from '../metadata/stream/PhysicalLevelTechnique';
 import { StreamMetadataDecoder } from '../metadata/stream/StreamMetadataDecoder';
 import { IntWrapper } from './IntWrapper';
 import { DecodingUtils } from './DecodingUtils';
 import { IntegerDecoder } from './IntegerDecoder';
 import { GeometryDecoder } from './GeometryDecoder';
 import { PropertyDecoder } from './PropertyDecoder';
+import { ScalarType } from "../metadata/mlt_tileset_metadata_pb";
 
-class MltDecoder {
-    private static ID_COLUMN_NAME = "id";
-    private static GEOMETRY_COLUMN_NAME = "geometry";
-
-    public static generateFeatureTables(tilesetMetadata: any): any {
-        const featureTables = [];
-        for (let i=0; i<tilesetMetadata.featureTables.length; i++) {
-          const featureTable = tilesetMetadata.featureTables[i];
-          const table = {"name": featureTable.name};
-          const columns = [];
-          featureTable.columns.forEach((column) => {
-            // https://github.com/bufbuild/protobuf-es/blob/main/docs/runtime_api.md#accessing-oneof-groups
-            if (column.name === "geometry" || column.name === "id") {
-                columns.push({
-                  "name": column.name
-                });
-              } else {
-                columns.push({
-                  "name": column.name,
-                  "type": column.type.value.type.value
-                });
-            }
-            table['columns'] = columns;
-            featureTables[i] = table;
-          });
-        }
-        return featureTables;
-    }
-
-    public static decodeMlTile(tile: Uint8Array, featureTables: any): MapLibreTile {
+export class MltDecoder {
+    public static decodeMlTile(tile: Uint8Array, tileMetadata: TileSetMetadata): MapLibreTile {
         const offset = new IntWrapper(0);
         const mltLayers: Layer[] = [];
         while (offset.get() < tile.length) {
@@ -49,11 +21,8 @@ class MltDecoder {
 
             offset.increment();
             const infos = DecodingUtils.decodeVarint(tile, offset, 4);
-            // TODO: keep these unused variables for now to match Java code
-            /* eslint-disable @typescript-eslint/no-unused-vars */
             const version = tile[offset.get()];
-            const tileExtent = infos[1];
-            const maxTileExtent = infos[2];
+            const extent = infos[1];
             const featureTableId = infos[0];
             const numFeatures = infos[3];
             // Optimize metadata usage
@@ -68,16 +37,20 @@ class MltDecoder {
                 if (columnName === "id") {
                     if (numStreams === 2) {
                         const presentStreamMetadata = StreamMetadataDecoder.decode(tile, offset);
-                        const presentStream = DecodingUtils.decodeBooleanRle(tile, presentStreamMetadata.numValues(), presentStreamMetadata.byteLength(), offset);
+                        // TODO: the return value of this function is not used, so advance offset without decoding?
+                        DecodingUtils.decodeBooleanRle(tile, presentStreamMetadata.numValues(), offset);
+                    } else {
+                        throw new Error("Unsupported number of streams for ID column: " + numStreams);
                     }
-                    // TODO: handle switching on physicalType
-                    // const physicalType = columnMetadata.type;
-
                     const idDataStreamMetadata = StreamMetadataDecoder.decode(tile, offset);
-                    ids = idDataStreamMetadata.physicalLevelTechnique() === PhysicalLevelTechnique.FAST_PFOR
-                        ? IntegerDecoder.decodeIntStream(tile, offset, idDataStreamMetadata, false).map(i => i as number)
-                        : IntegerDecoder.decodeLongStream(tile, offset, idDataStreamMetadata, false);
-
+                    const physicalType = columnMetadata.type.value.type.value;
+                    if (physicalType === ScalarType.UINT_32) {
+                        ids = IntegerDecoder.decodeIntStream(tile, offset, idDataStreamMetadata, false);
+                    } else if (physicalType === ScalarType.UINT_64){
+                        ids = IntegerDecoder.decodeLongStream(tile, offset, idDataStreamMetadata, false);
+                    } else {
+                        throw new Error("Unsupported ID column type: " + physicalType);
+                    }
                 } else if (columnName === "geometry") {
                     const geometryTypeMetadata = StreamMetadataDecoder.decode(tile, offset);
                     geometryTypes = IntegerDecoder.decodeIntStream(tile, offset, geometryTypeMetadata, false);
@@ -85,20 +58,22 @@ class MltDecoder {
                 } else {
                     const propertyColumn = PropertyDecoder.decodePropertyColumn(tile, offset, columnMetadata.type, numStreams);
                     if (propertyColumn instanceof Map) {
-                        throw new Error("not implemented yet");
+                        throw new Error("Nested properties are not implemented yet");
+                    } else {
+                        properties[columnName] = propertyColumn;
                     }
                     properties[columnName] = propertyColumn;
                 }
             }
 
-            const layer = MltDecoder.convertToLayer(ids, geometryTypes, geometryColumn, properties, featureTableMeta.name, numFeatures);
+            const layer = MltDecoder.convertToLayer(ids, extent, version, geometries, properties, metadata, numFeatures);
             mltLayers.push(layer);
         }
 
         return new MapLibreTile(mltLayers);
     }
 
-    private static convertToLayer(ids: number[], geometryTypes, geometryColumn, properties, name, numFeatures: number): Layer {
+    private static convertToLayer(ids: number[], extent, version, geometries, properties, metadata: FeatureTableSchema, numFeatures: number): Layer {
         const features: Feature[] = new Array(numFeatures);
         const vals = Object.entries(properties);
         const geometries = GeometryDecoder.decodeGeometries(geometryTypes, geometryColumn);
@@ -115,11 +90,9 @@ class MltDecoder {
                     p[key] = null;
                 }
             }
-            features[j] = new Feature(ids[j], geometries[j], p);
+            features[j] = new Feature(ids[j], extent, geometries[j], p)
         }
 
-        return new Layer(name, features);
+        return new Layer(metadata.name, version, features);
     }
 }
-
-export { MltDecoder };
