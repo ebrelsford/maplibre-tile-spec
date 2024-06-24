@@ -15,7 +15,6 @@ jobs:
     defaults:
       run:
         shell: bash
-        working-directory: js
     steps:
 
       - uses: actions/checkout@v4
@@ -26,9 +25,10 @@ jobs:
       - name: Use Node.js from nvmrc
         uses: actions/setup-node@v4
         with:
-          node-version-file: '.nvmrc'
+          node-version-file: 'js/.nvmrc'
 
       - name: Bump version
+        working-directory: js
         run: |
           npm version --commit-hooks false --git-tag-version false ${{ inputs.version }}
 
