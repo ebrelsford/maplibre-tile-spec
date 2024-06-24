@@ -69,11 +69,12 @@ jobs:
           echo "release_type=$RELEASE_TYPE" >> $GITHUB_OUTPUT
 
       - name: Build
+        working-directory: js
         run: |
-          npm run build-dist
-          npm run build-benchmarks
+          npm run build
 
       - name: Publish NPM package (regular)
+        working-directory: js
         if: ${{ steps.prepare_release.outputs.release_type == 'regular' }}
         run: |
           npm publish
@@ -81,6 +82,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ORG_TOKEN }}
 
       - name: Publish NPM package (pre-release)
+        working-directory: js
         if: ${{ steps.prepare_release.outputs.release_type == 'prerelease' }}
         run: |
           npm publish --tag next
@@ -88,6 +90,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_ORG_TOKEN }}
 
       - name: Tag commit and push
+        working-directory: js
         id: tag_version
         uses: mathieudutour/github-tag-action@v6.2
         with:
@@ -95,18 +98,12 @@ jobs:
           custom_tag: ${{ steps.package-version.outputs.current-version }}
 
       - name: Create Archive
+        working-directory: js
         run: |
           zip -r dist dist
 
-      - name: Build Release Notes
-        id: release_notes
-        if: ${{ steps.prepare_release.outputs.release_type == 'regular' }}
-        run: |
-          RELEASE_NOTES_PATH="${PWD}/release_notes.txt"
-          ./build/release-notes.js > ${RELEASE_NOTES_PATH}
-          echo "release_notes=${RELEASE_NOTES_PATH}" >> $GITHUB_OUTPUT
-
       - name: Create GitHub Release (regular)
+        working-directory: js
         id: create_regular_release
         if: ${{ steps.prepare_release.outputs.release_type == 'regular' }}
         uses: ncipollo/release-action@v1
@@ -123,6 +120,7 @@ jobs:
           prerelease: false
 
       - name: Create GitHub Release (prerelease)
+        working-directory: js
         id: create_prerelease
         if: ${{ steps.prepare_release.outputs.release_type == 'prerelease' }}
         uses: actions/create-release@v1
@@ -135,6 +133,7 @@ jobs:
           prerelease: true
 
       - name: Upload GitHub Release Assets (prerelease)
+        working-directory: js
         uses: actions/upload-release-asset@v1
         if: ${{ steps.prepare_release.outputs.release_type == 'prerelease' }}
         env:
