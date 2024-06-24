@@ -7,5 +7,8 @@ coverage/
 target/
 .gradle/
 build/
-**/bing/mvt/*.mvt
-test/fixtures/omt2/
+test/output
+java/output
+test/benchmarks/**/*.mvt
+test/benchmarks/**/*.pbf
+test/expected/**/*.meta.pbf
