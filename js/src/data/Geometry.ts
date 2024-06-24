@@ -1,4 +1,4 @@
-import Point = require("@mapbox/point-geometry");
+import * as Point from "@mapbox/point-geometry";
 import { Projection } from './Projection';
 
 export class Coordinate {

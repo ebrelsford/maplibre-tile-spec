@@ -1,5 +1,5 @@
 import { IntWrapper } from './IntWrapper';
-import { BitSet } from 'bitset';
+import BitSet from 'bitset';
 
 export class DecodingUtils {
 

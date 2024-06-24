@@ -7,7 +7,7 @@ import { IntWrapper } from './IntWrapper';
 import { StreamMetadataDecoder } from '../metadata/stream/StreamMetadataDecoder';
 import { PhysicalLevelTechnique } from '../metadata/stream/PhysicalLevelTechnique';
 import { GeometryFactory, Coordinate, LineString, Polygon, LinearRing } from '../data/Geometry';
-import Point = require("@mapbox/point-geometry");
+import Point from "@mapbox/point-geometry";
 
 export enum GeometryType {
     POINT,
